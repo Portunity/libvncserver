@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-cmake_policy(SET CMP0037 NEW)
+#cmake_policy(SET CMP0037 NEW)
 
 project(LibVNCServer)
 include(CheckFunctionExists)
@@ -33,7 +33,7 @@ find_package(JPEG)
 find_package(PNG)
 find_package(SDL)
 find_package(GnuTLS)
-find_package(Threads)
+#find_package(Threads)
 find_package(X11)
 find_package(OpenSSL)
 find_library(LIBGCRYPT_LIBRARIES gcrypt)
@@ -144,8 +144,9 @@ check_include_file("sys/types.h"   HAVE_SYS_TYPES_H)
 check_function_exists(gettimeofday    LIBVNCSERVER_HAVE_GETTIMEOFDAY)
 
 if(CMAKE_USE_PTHREADS_INIT)
-  set(LIBVNCSERVER_HAVE_LIBPTHREAD 1)
+  option(LIBVNCSERVER_HAVE_LIBPTHREAD "use pthread" ON)
 endif(CMAKE_USE_PTHREADS_INIT)
+
 if(LIBVNCSERVER_HAVE_SYS_SOCKET_H)
   # socklen_t
   list(APPEND CMAKE_EXTRA_INCLUDE_FILES "sys/socket.h")
@@ -163,7 +164,9 @@ if(NOT HAVE_LIBVNCSERVER_IN_ADDR_T)
   set(LIBVNCSERVER_NEED_INADDR_T 1)
 endif(NOT HAVE_LIBVNCSERVER_IN_ADDR_T)
 
-TEST_BIG_ENDIAN(LIBVNCSERVER_WORDS_BIGENDIAN)
+if (!_MSC_VER)
+	TEST_BIG_ENDIAN(LIBVNCSERVER_WORDS_BIGENDIAN)
+endif()
 
 # TODO:
 # LIBVNCSERVER_ENOENT_WORKAROUND
@@ -271,9 +274,15 @@ if(LIBVNCSERVER_WITH_WEBSOCKETS)
   )
 endif(LIBVNCSERVER_WITH_WEBSOCKETS)
 
-
+option(BUILD_STATIC_LIBRARY "Build lib for static linking" OFF)
+if(BUILD_STATIC_LIBRARY)
+add_library(vncclient STATIC ${LIBVNCCLIENT_SOURCES})
+add_library(vncserver STATIC ${LIBVNCSERVER_SOURCES})
+else()
 add_library(vncclient SHARED ${LIBVNCCLIENT_SOURCES})
 add_library(vncserver SHARED ${LIBVNCSERVER_SOURCES})
+endif(BUILD_STATIC_LIBRARY)
+
 if(WIN32)
   set(ADDITIONAL_LIBS ${ADDITIONAL_LIBS} ws2_32)
 endif(WIN32)

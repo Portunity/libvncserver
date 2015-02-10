@@ -2,6 +2,10 @@
 #define _RFB_CRYPTO_H 1
 
 #include <sys/uio.h>
+#ifdef WIN32
+#include <io.h>
+#endif
+
 
 #define SHA1_HASH_SIZE 20
 #define MD5_HASH_SIZE 16

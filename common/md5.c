@@ -28,11 +28,17 @@
 
 #include "md5.h"
 
-/* #ifdef _LIBC */
-# include <endian.h>
-# if __BYTE_ORDER == __BIG_ENDIAN
-#  define WORDS_BIGENDIAN 1
-# endif
+#ifdef _MSC_VER
+#define __BIG_ENDIAN 4321
+#define __LITTLE_ENDIAN 1234
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#else
+#include <endian.h>
+#endif
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define WORDS_BIGENDIAN 1
+#endif
+
 /* We need to keep the namespace clean so define the MD5 function
    protected using leading __ .  */
 # define md5_init_ctx __md5_init_ctx

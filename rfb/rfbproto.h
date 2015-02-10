@@ -60,6 +60,8 @@
  *      messages have to be explained by comments.
  */
 
+#include <stdint.h>
+#include <rfb/rfbconfig.h>
 
 #if defined(WIN32) && !defined(__MINGW32__)
 #define LIBVNCSERVER_WORDS_BIGENDIAN
@@ -68,9 +70,6 @@
 #include <winsock2.h>
 #undef SOCKET
 #define SOCKET int
-#else
-#include <rfb/rfbconfig.h>
-#include <rfb/rfbint.h>
 #endif
 
 #ifdef LIBVNCSERVER_HAVE_LIBZ
@@ -106,10 +105,6 @@ typedef int8_t rfbBool;
 #define FALSE 0
 #undef TRUE
 #define TRUE -1
-#endif
-
-#ifdef _MSC_VER
-#include <stdint.h>
 #endif
 
 typedef uint32_t rfbKeySym;

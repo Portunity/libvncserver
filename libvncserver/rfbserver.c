@@ -39,7 +39,13 @@
 #include "private.h"
 
 #ifdef LIBVNCSERVER_HAVE_FCNTL_H
+#if _MSC_VER && __STDC__
+#undef __STDC__
 #include <fcntl.h>
+#define __STDC__
+#else
+#include <fcntl.h>
+#endif
 #endif
 
 #ifdef WIN32
@@ -47,6 +53,10 @@
 #include <ws2tcpip.h>
 #include <io.h>
 #define write(sock,buf,len) send(sock,buf,len,0)
+#ifdef _MSC_VER
+#define open(filename, oflag, pmode) _open(filename, oflag, pmode)
+#endif
+
 #else
 #ifdef LIBVNCSERVER_HAVE_UNISTD_H
 #include <unistd.h>
@@ -74,7 +84,10 @@
 /* stst() */
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #ifndef WIN32
 /* readdir() */

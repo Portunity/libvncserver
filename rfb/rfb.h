@@ -55,6 +55,9 @@ extern "C"
 #ifdef WIN32
 #undef SOCKET
 #include <winsock2.h>
+#ifdef _MSC_VER
+	typedef uint32_t in_addr_t;
+#endif
 #ifdef LIBVNCSERVER_HAVE_WS2TCPIP_H
 #undef socklen_t
 #include <ws2tcpip.h>
@@ -750,11 +753,11 @@ extern int rfbReadExactTimeout(rfbClientPtr cl, char *buf, int len,int timeout);
 extern int rfbPeekExactTimeout(rfbClientPtr cl, char *buf, int len,int timeout);
 extern int rfbWriteExact(rfbClientPtr cl, const char *buf, int len);
 extern int rfbCheckFds(rfbScreenInfoPtr rfbScreen,long usec);
-extern int rfbConnect(rfbScreenInfoPtr rfbScreen, char* host, int port);
-extern int rfbConnectToTcpAddr(char* host, int port);
-extern int rfbListenOnTCPPort(int port, in_addr_t iface);
-extern int rfbListenOnTCP6Port(int port, const char* iface);
-extern int rfbListenOnUDPPort(int port, in_addr_t iface);
+extern SOCKET rfbConnect(rfbScreenInfoPtr rfbScreen, char* host, int port);
+extern SOCKET rfbConnectToTcpAddr(char* host, int port);
+extern SOCKET rfbListenOnTCPPort(int port, in_addr_t iface);
+extern SOCKET rfbListenOnTCP6Port(int port, const char* iface);
+extern SOCKET rfbListenOnUDPPort(int port, in_addr_t iface);
 extern int rfbStringToAddr(char* string,in_addr_t* addr);
 extern rfbBool rfbSetNonBlocking(int sock);
 
