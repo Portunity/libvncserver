@@ -58,6 +58,9 @@
 #endif
 
 #else
+#define closesocket close
+#define INVALID_SOCKET -1
+
 #ifdef LIBVNCSERVER_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -370,14 +373,14 @@ rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
       rfbReleaseClientIterator(iterator);
 
       if(!rfbSetNonBlocking(sock)) {
-	close(sock);
+	closesocket(sock);
 	return NULL;
       }
 
       if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 		     (char *)&one, sizeof(one)) < 0) {
 	rfbLogPerror("setsockopt failed");
-	close(sock);
+	closesocket(sock);
 	return NULL;
       }
 
@@ -574,8 +577,8 @@ rfbClientConnectionGone(rfbClientPtr cl)
     }
 #endif
 
-    if(cl->sock>=0)
-	close(cl->sock);
+    if(cl->sock!=INVALID_SOCKET)
+		closesocket(cl->sock);
 
     if (cl->scaledScreen!=NULL)
         cl->scaledScreen->scaledScreenRefCount--;
@@ -590,7 +593,7 @@ rfbClientConnectionGone(rfbClientPtr cl)
     free(cl->beforeEncBuf);
     free(cl->afterEncBuf);
 
-    if(cl->sock>=0)
+    if(cl->sock != INVALID_SOCKET)
        FD_CLR(cl->sock,&(cl->screen->allFds));
 
     cl->clientGoneHook(cl);
@@ -3398,7 +3401,7 @@ rfbSendNewFBSize(rfbClientPtr cl,
 rfbBool
 rfbSendUpdateBuf(rfbClientPtr cl)
 {
-    if(cl->sock<0)
+	if (cl->sock == INVALID_SOCKET)
       return FALSE;
 
     if (rfbWriteExact(cl, cl->updateBuf, cl->ublen) < 0) {

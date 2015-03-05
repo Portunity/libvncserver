@@ -44,7 +44,7 @@ void rfbssl_log_func(int level, const char *msg)
 
 static void rfbssl_error(const char *msg, int e)
 {
-    rfbErr("%s: %s (%ld)\n", msg, gnutls_strerror(e), e);
+    rfbErr("%s: %s (%d)\n", msg, gnutls_strerror(e), e);
 }
 
 static int rfbssl_init_session(struct rfbssl_ctx *ctx, int fd)
@@ -87,11 +87,12 @@ static int generate_rsa_params(struct rfbssl_ctx *ctx)
 struct rfbssl_ctx *rfbssl_init_global(char *key, char *cert)
 {
     int ret = GNUTLS_E_SUCCESS;
-    struct rfbssl_ctx *ctx = NULL;
-
-    if (NULL == (ctx = malloc(sizeof(struct rfbssl_ctx)))) {
-	ret = GNUTLS_E_MEMORY_ERROR;
-    } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_global_init())) {
+	struct rfbssl_ctx *ctx = malloc(sizeof(struct rfbssl_ctx));
+	
+	if (ctx == NULL) {
+		ret = GNUTLS_E_MEMORY_ERROR;
+	}
+    else if (!GNUTLS_E_SUCCESS == (ret = gnutls_global_init())) {
 	/* */
     } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_certificate_allocate_credentials(&ctx->x509_cred))) {
 	/* */
@@ -109,9 +110,11 @@ struct rfbssl_ctx *rfbssl_init_global(char *key, char *cert)
 	gnutls_global_set_log_function(rfbssl_log_func);
 	gnutls_global_set_log_level(1);
 	gnutls_certificate_set_dh_params(ctx->x509_cred, ctx->dh_params);
+	ctx->peekstart = ctx->peeklen = 0;
 	return ctx;
     }
 
+	rfbssl_error(__func__, ret);
     free(ctx);
     return NULL;
 }
@@ -125,15 +128,21 @@ int rfbssl_init(rfbClientPtr cl)
 	keyfile = cl->screen->sslcertfile;
 
     if (NULL == (ctx = rfbssl_init_global(keyfile,  cl->screen->sslcertfile))) {
+
 	/* */
     } else if (GNUTLS_E_SUCCESS != (ret = rfbssl_init_session(ctx, cl->sock))) {
 	/* */
     } else {
+		do {
+			ret = gnutls_handshake(ctx->session);
+		} while (ret != GNUTLS_E_SUCCESS && !gnutls_error_is_fatal(ret));
+		/*
 	while (GNUTLS_E_SUCCESS != (ret = gnutls_handshake(ctx->session))) {
 	    if (ret == GNUTLS_E_AGAIN)
 		continue;
 	    break;
 	}
+	*/
     }
 
     if (ret != GNUTLS_E_SUCCESS) {

@@ -24,18 +24,18 @@ set(COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
 set(LIBVNCCLIENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libvncclient)
 set(LIBVNCSRVTEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples)
 set(LIBVNCCLITEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/client_examples)
+option(BUILD_STATIC_LIBRARY "Build lib for static linking" OFF)
 
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver ${CMAKE_CURRENT_SOURCE_DIR}/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/libvncserver ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
 find_package(ZLIB)
 find_package(JPEG)
 find_package(PNG)
-find_package(SDL)
+#find_package(SDL)
 find_package(GnuTLS)
 #find_package(Threads)
 find_package(X11)
-find_package(OpenSSL)
+#find_package(OpenSSL)
 find_library(LIBGCRYPT_LIBRARIES gcrypt)
 
 # Check whether the version of libjpeg we found was libjpeg-turbo and print a
@@ -89,7 +89,7 @@ if(NOT HAVE_B64_IN_LIBC)
 endif(NOT HAVE_B64_IN_LIBC)
 
 if(Threads_FOUND)
-  option(TIGHTVNC_FILETRANSFER "Enable filetransfer" ON)
+  option(TIGHTVNC_FILETRANSFER "Enable filetransfer" OFF)
 endif(Threads_FOUND)
 if(ZLIB_FOUND)
   set(LIBVNCSERVER_HAVE_LIBZ 1)
@@ -144,7 +144,7 @@ check_include_file("sys/types.h"   HAVE_SYS_TYPES_H)
 check_function_exists(gettimeofday    LIBVNCSERVER_HAVE_GETTIMEOFDAY)
 
 if(CMAKE_USE_PTHREADS_INIT)
-  option(LIBVNCSERVER_HAVE_LIBPTHREAD "use pthread" ON)
+  option(LIBVNCSERVER_HAVE_LIBPTHREAD "use pthread" OFF)
 endif(CMAKE_USE_PTHREADS_INIT)
 
 if(LIBVNCSERVER_HAVE_SYS_SOCKET_H)
@@ -274,7 +274,6 @@ if(LIBVNCSERVER_WITH_WEBSOCKETS)
   )
 endif(LIBVNCSERVER_WITH_WEBSOCKETS)
 
-option(BUILD_STATIC_LIBRARY "Build lib for static linking" OFF)
 if(BUILD_STATIC_LIBRARY)
 add_library(vncclient STATIC ${LIBVNCCLIENT_SOURCES})
 add_library(vncserver STATIC ${LIBVNCSERVER_SOURCES})
