@@ -146,10 +146,13 @@ int rfbssl_init(rfbClientPtr cl)
     }
 
     if (ret != GNUTLS_E_SUCCESS) {
-	rfbssl_error(__func__, ret);
+		if (ret == GNUTLS_E_FATAL_ALERT_RECEIVED) {
+			rfbErr("%s: alert %s\n", __func__, gnutls_alert_get_name(gnutls_alert_get(ctx->session)));
+		}
+		rfbssl_error(__func__, ret);
     } else {
-	cl->sslctx = (rfbSslCtx *)ctx;
-	rfbLog("%s protocol initialized\n", gnutls_protocol_get_name(gnutls_protocol_get_version(ctx->session)));
+		cl->sslctx = (rfbSslCtx *)ctx;
+		rfbLog("%s protocol initialized\n", gnutls_protocol_get_name(gnutls_protocol_get_version(ctx->session)));
     }
     return ret;
 }
