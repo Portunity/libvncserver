@@ -110,6 +110,7 @@ struct rfbssl_ctx *rfbssl_init_global(char *key, char *cert)
 	gnutls_global_set_log_function(rfbssl_log_func);
 	gnutls_global_set_log_level(1);
 	gnutls_certificate_set_dh_params(ctx->x509_cred, ctx->dh_params);
+	/* newly allocated memory should be initialized, at least where it is important */
 	ctx->peekstart = ctx->peeklen = 0;
 	return ctx;
     }
@@ -136,13 +137,6 @@ int rfbssl_init(rfbClientPtr cl)
 		do {
 			ret = gnutls_handshake(ctx->session);
 		} while (ret != GNUTLS_E_SUCCESS && !gnutls_error_is_fatal(ret));
-		/*
-	while (GNUTLS_E_SUCCESS != (ret = gnutls_handshake(ctx->session))) {
-	    if (ret == GNUTLS_E_AGAIN)
-		continue;
-	    break;
-	}
-	*/
     }
 
     if (ret != GNUTLS_E_SUCCESS) {

@@ -273,9 +273,6 @@ static rfbBool HandleZRLE24Up(rfbClient* client, int rx, int ry, int rw, int rh)
 static rfbBool HandleZRLE24Down(rfbClient* client, int rx, int ry, int rw, int rh);
 static rfbBool HandleZRLE32(rfbClient* client, int rx, int ry, int rw, int rh);
 #endif
-#ifdef LIBVNCSERVER_CONFIG_LIBVA
-static rfbBool HandleH264 (rfbClient* client, int rx, int ry, int rw, int rh);
-#endif
 
 /*
  * Server Capability Functions
@@ -1376,10 +1373,6 @@ SetFormatAndEncodings(rfbClient* client)
 	encs[se->nEncodings++] = rfbClientSwap32IfLE(rfbEncodingCoRRE);
       } else if (strncasecmp(encStr,"rre",encStrLen) == 0) {
 	encs[se->nEncodings++] = rfbClientSwap32IfLE(rfbEncodingRRE);
-#ifdef LIBVNCSERVER_CONFIG_LIBVA
-      } else if (strncasecmp(encStr,"h264",encStrLen) == 0) {
-	encs[se->nEncodings++] = rfbClientSwap32IfLE(rfbEncodingH264);
-#endif
       } else {
 	rfbClientLog("Unknown encoding '%.*s'\n",encStrLen,encStr);
       }
@@ -1448,10 +1441,6 @@ SetFormatAndEncodings(rfbClient* client)
       encs[se->nEncodings++] = rfbClientSwap32IfLE(client->appData.qualityLevel +
 					  rfbEncodingQualityLevel0);
     }
-#ifdef LIBVNCSERVER_CONFIG_LIBVA
-    encs[se->nEncodings++] = rfbClientSwap32IfLE(rfbEncodingH264);
-    rfbClientLog("h264 encoding added\n");
-#endif
   }
 
 
@@ -1946,7 +1935,10 @@ HandleRFBServerMessage(rfbClient* client)
 	int y=rect.r.y, h=rect.r.h;
 
 	bytesPerLine = rect.r.w * client->format.bitsPerPixel / 8;
-	linesToRead = RFB_BUFFER_SIZE / bytesPerLine;
+	/* RealVNC 4.x-5.x on OSX can induce bytesPerLine==0, 
+	   usually during GPU accel. */
+	/* Regardless of cause, do not divide by zero. */
+	linesToRead = bytesPerLine ? (RFB_BUFFER_SIZE / bytesPerLine) : 0;
 
 	while (h > 0) {
 	  if (linesToRead > h)
@@ -2168,14 +2160,6 @@ HandleRFBServerMessage(rfbClient* client)
 	break;
      }
 
-#endif
-#ifdef LIBVNCSERVER_CONFIG_LIBVA
-      case rfbEncodingH264:
-      {
-	if (!HandleH264(client, rect.r.x, rect.r.y, rect.r.w, rect.r.h))
-	  return FALSE;
-	break;
-      }
 #endif
 
       default:
@@ -2413,7 +2397,6 @@ HandleRFBServerMessage(rfbClient* client)
 #define UNCOMP -8
 #include "zrle.c"
 #undef BPP
-#include "h264.c"
 
 
 /*
