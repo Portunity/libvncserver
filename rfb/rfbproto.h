@@ -72,6 +72,10 @@
 #define SOCKET int
 #endif
 
+#if !defined(WIN32)
+#include <endian.h>
+#endif
+
 #ifdef LIBVNCSERVER_HAVE_LIBZ
 #include <zlib.h>
 #ifdef __CHECKER__
@@ -80,8 +84,7 @@
 #endif
 #endif
 
-#include <endian.h>
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if __BYTE_ORDER == __BIG_ENDIAN || WORDS_BIGENDIAN
 #define LIBVBNCSERVER_WORDS_BIGENDIAN 1
 #endif
 
