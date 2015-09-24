@@ -72,9 +72,9 @@
 #define SOCKET int
 #endif
 
-#if !defined(WIN32)
+/*
 #include <endian.h>
-#endif
+*/
 
 #ifdef LIBVNCSERVER_HAVE_LIBZ
 #include <zlib.h>
