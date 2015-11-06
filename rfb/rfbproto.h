@@ -61,7 +61,6 @@
  */
 
 #include <stdint.h>
-#include <rfb/rfbconfig.h>
 
 #if defined(WIN32) && !defined(__MINGW32__)
 #define LIBVNCSERVER_WORDS_BIGENDIAN
@@ -70,11 +69,9 @@
 #include <winsock2.h>
 #undef SOCKET
 #define SOCKET int
+#else
+#include <rfb/rfbconfig.h>
 #endif
-
-/*
-#include <endian.h>
-*/
 
 #ifdef LIBVNCSERVER_HAVE_LIBZ
 #include <zlib.h>
@@ -84,10 +81,12 @@
 #endif
 #endif
 
-#if __BYTE_ORDER == __BIG_ENDIAN || WORDS_BIGENDIAN
-#define LIBVBNCSERVER_WORDS_BIGENDIAN 1
-#endif
-
+#if !defined(_WIN32)
+# include <endian.h>
+# if __BYTE_ORDER == __BIG_ENDIAN
+#  define LIBVNCSERVER_WORDS_BIGENDIAN 1
+# endif
+#endif /* !_WIN32 */
 
 /* MS compilers don't have strncasecmp */
 #ifdef _MSC_VER
@@ -1067,7 +1066,7 @@ typedef struct _rfbFileTransferMsg {
 #define rfbRErrorCmd			0xFFFFFFFF/*  Error when a command fails on remote side (ret in "size" field) */
 
 #define sz_rfbBlockSize			8192  /*  Size of a File Transfer packet (before compression) */
-#define rfbZipDirectoryPrefix   "!UVNCDIR-\0" /*  Transfered directory are zipped in a file with this prefix. Must end with "-" */
+#define rfbZipDirectoryPrefix   "!UVNCDIR-\0" /*  Transferred directory are zipped in a file with this prefix. Must end with "-" */
 #define sz_rfbZipDirectoryPrefix 9 
 #define rfbDirPrefix			"[ "
 #define rfbDirSuffix			" ]"		
