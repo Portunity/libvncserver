@@ -380,7 +380,7 @@ typedef struct _rfbScreenInfo
     rfbDisplayFinishedHookPtr displayFinishedHook;
     /** xvpHook is called to handle an xvp client message */
     rfbXvpHookPtr xvpHook;
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
     char *sslkeyfile;
     char *sslcertfile;
 #endif
@@ -692,9 +692,10 @@ typedef struct _rfbClientRec {
     int turboQualityLevel;  /* 1-100 scale */
 #endif
 #endif
-
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
     rfbSslCtx *sslctx;
+#endif
+#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
     wsCtx     *wsctx;
     char *wspath;                          /* Requests path component */
 #endif

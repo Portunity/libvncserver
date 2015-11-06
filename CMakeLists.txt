@@ -105,11 +105,13 @@ option(LIBVNCSERVER_ALLOW24BPP "Allow 24 bpp" ON)
 if(GNUTLS_FOUND)
   set(LIBVNCSERVER_WITH_CLIENT_TLS 1)
   option(LIBVNCSERVER_WITH_WEBSOCKETS "Build with websockets support (gnutls)" ON)
-  set(WEBSOCKET_LIBRARIES ${RESOLV_LIB} ${GNUTLS_LIBRARIES})
+  set(TLS_LIBRARIES ${GNUTLS_LIBRARIES})
+  set(WEBSOCKET_LIBRARIES ${RESOLV_LIB})
   set(WSSRCS ${LIBVNCSERVER_DIR}/rfbssl_gnutls ${LIBVNCSERVER_DIR}/rfbcrypto_gnutls)
 elseif(OPENSSL_FOUND)
   option(LIBVNCSERVER_WITH_WEBSOCKETS "Build with websockets support (openssl)" ON)
-  set(WEBSOCKET_LIBRARIES ${RESOLV_LIB} ${OPENSSL_LIBRARIES})
+  set(TLS_LIBRARIES ${OPENSSL_LIBRARIES})
+  set(WEBSOCKET_LIBRARIES ${RESOLV_LIB})
   set(WSSRCS ${LIBVNCSERVER_DIR}/rfbssl_openssl ${LIBVNCSERVER_DIR}/rfbcrypto_openssl)
 else()
   option(LIBVNCSERVER_WITH_WEBSOCKETS "Build with websockets support (no ssl)" ON)
@@ -264,12 +266,19 @@ if(TIGHTVNC_FILETRANSFER)
   )
 endif(TIGHTVNC_FILETRANSFER)
 
+if (OPENSSL_FOUND OR GNUTLS_FOUND)
+  add_definitions(-DLIBVNCSERVER_WITH_TLS)
+  set(LIBVNCSERVER_SOURCES
+    ${LIBVNCSERVER_SOURCES}
+    ${WSSRCS}
+  )
+endif(OPENSSL_FOUND OR GNUTLS_FOUND)
+
 if(LIBVNCSERVER_WITH_WEBSOCKETS)
   add_definitions(-DLIBVNCSERVER_WITH_WEBSOCKETS)
   set(LIBVNCSERVER_SOURCES
     ${LIBVNCSERVER_SOURCES}
     ${LIBVNCSERVER_DIR}/websockets.c
-    ${WSSRCS}
   )
 endif(LIBVNCSERVER_WITH_WEBSOCKETS)
 
@@ -289,7 +298,7 @@ target_link_libraries(vncclient
                       ${ADDITIONAL_LIBS}
                       ${ZLIB_LIBRARIES}
                       ${JPEG_LIBRARIES}
-                      ${GNUTLS_LIBRARIES}
+                      ${TLS_LIBRARIES}
 )
 target_link_libraries(vncserver
                       ${ADDITIONAL_LIBS}
@@ -297,6 +306,7 @@ target_link_libraries(vncserver
                       ${JPEG_LIBRARIES}
 		      ${PNG_LIBRARIES}
 		      ${WEBSOCKET_LIBRARIES}
+			  ${TLS_LIBRARIES}
 )
 
 SET_TARGET_PROPERTIES(vncclient vncserver

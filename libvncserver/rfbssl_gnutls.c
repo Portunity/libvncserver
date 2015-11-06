@@ -52,11 +52,11 @@ static int rfbssl_init_session(struct rfbssl_ctx *ctx, int fd)
     gnutls_session_t session;
     int ret;
 
-    if (!GNUTLS_E_SUCCESS == (ret = gnutls_init(&session, GNUTLS_SERVER))) {
+    if (!(GNUTLS_E_SUCCESS == (ret = gnutls_init(&session, GNUTLS_SERVER)))) {
       /* */
-    } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_priority_set_direct(session, "EXPORT", NULL))) {
+    } else if (!(GNUTLS_E_SUCCESS == (ret = gnutls_priority_set_direct(session, "EXPORT", NULL)))) {
       /* */
-    } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, ctx->x509_cred))) {
+    } else if (!(GNUTLS_E_SUCCESS == (ret = gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, ctx->x509_cred)))) {
       /* */
     } else {
       gnutls_session_enable_compatibility_mode(session);
@@ -69,8 +69,9 @@ static int rfbssl_init_session(struct rfbssl_ctx *ctx, int fd)
 static int generate_dh_params(struct rfbssl_ctx *ctx)
 {
     int ret;
-    if (GNUTLS_E_SUCCESS == (ret = gnutls_dh_params_init(&ctx->dh_params)))
-	ret = gnutls_dh_params_generate2(ctx->dh_params, 1024);
+    if (GNUTLS_E_SUCCESS == (ret = gnutls_dh_params_init(&ctx->dh_params))) {
+		ret = gnutls_dh_params_generate2(ctx->dh_params, 1024);
+	}
     return ret;
 }
 
@@ -92,27 +93,27 @@ struct rfbssl_ctx *rfbssl_init_global(char *key, char *cert)
 	if (ctx == NULL) {
 		ret = GNUTLS_E_MEMORY_ERROR;
 	}
-    else if (!GNUTLS_E_SUCCESS == (ret = gnutls_global_init())) {
+    else if (!(GNUTLS_E_SUCCESS == (ret = gnutls_global_init()))) {
 	/* */
-    } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_certificate_allocate_credentials(&ctx->x509_cred))) {
+    } else if (!(GNUTLS_E_SUCCESS == (ret = gnutls_certificate_allocate_credentials(&ctx->x509_cred)))) {
 	/* */
     } else if ((ret = gnutls_certificate_set_x509_trust_file(ctx->x509_cred, cert, GNUTLS_X509_FMT_PEM)) < 0) {
 	/* */
-    } else if (!GNUTLS_E_SUCCESS == (ret = gnutls_certificate_set_x509_key_file(ctx->x509_cred, cert, key, GNUTLS_X509_FMT_PEM))) {
+    } else if (!(GNUTLS_E_SUCCESS == (ret = gnutls_certificate_set_x509_key_file(ctx->x509_cred, cert, key, GNUTLS_X509_FMT_PEM)))) {
 	/* */
-    } else if (!GNUTLS_E_SUCCESS == (ret = generate_dh_params(ctx))) {
+    } else if (!(GNUTLS_E_SUCCESS == (ret = generate_dh_params(ctx)))) {
 	/* */
 #ifdef I_LIKE_RSA_PARAMS_THAT_MUCH
     } else if (!GNUTLS_E_SUCCESS == (ret = generate_rsa_params(ctx))) {
 	/* */
 #endif
     } else {
-	gnutls_global_set_log_function(rfbssl_log_func);
-	gnutls_global_set_log_level(1);
-	gnutls_certificate_set_dh_params(ctx->x509_cred, ctx->dh_params);
-	/* newly allocated memory should be initialized, at least where it is important */
-	ctx->peekstart = ctx->peeklen = 0;
-	return ctx;
+		gnutls_global_set_log_function(rfbssl_log_func);
+		gnutls_global_set_log_level(1);
+		gnutls_certificate_set_dh_params(ctx->x509_cred, ctx->dh_params);
+		/* newly allocated memory should be initialized, at least where it is important */
+		ctx->peekstart = ctx->peeklen = 0;
+		return ctx;
     }
 
 	rfbssl_error(__func__, ret);
@@ -125,8 +126,9 @@ int rfbssl_init(rfbClientPtr cl)
     int ret = -1;
     struct rfbssl_ctx *ctx;
     char *keyfile;
-    if (!(keyfile = cl->screen->sslkeyfile))
-	keyfile = cl->screen->sslcertfile;
+    if (!(keyfile = cl->screen->sslkeyfile)) {
+		keyfile = cl->screen->sslcertfile;
+	}
 
     if (NULL == (ctx = rfbssl_init_global(keyfile,  cl->screen->sslcertfile))) {
 

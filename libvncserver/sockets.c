@@ -73,7 +73,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 #include "rfbssl.h"
 #endif
 
@@ -516,10 +516,12 @@ rfbCloseClient(rfbClientPtr cl)
 	  while(cl->screen->maxFd>0
 		&& !FD_ISSET(cl->screen->maxFd,&(cl->screen->allFds)))
 	    cl->screen->maxFd--;
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 	if (cl->sslctx)
 	    rfbssl_destroy(cl);
+	#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
 	free(cl->wspath);
+	#endif
 #endif
 #ifndef __MINGW32__
 	shutdown(cl->sock,SHUT_RDWR);
@@ -589,9 +591,12 @@ rfbReadExactTimeout(rfbClientPtr cl, char* buf, int len, int timeout)
 #ifdef LIBVNCSERVER_WITH_WEBSOCKETS
         if (cl->wsctx) {
             n = webSocketsDecode(cl, buf, len);
-        } else if (cl->sslctx) {
-	    n = rfbssl_read(cl, buf, len);
-	} else {
+        } else 
+#endif
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
+		if (cl->sslctx) {
+			n = rfbssl_read(cl, buf, len);
+		} else {
             n = read(sock, buf, len);
         }
 #else
@@ -621,7 +626,7 @@ rfbReadExactTimeout(rfbClientPtr cl, char* buf, int len, int timeout)
                 return n;
             }
 
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 	    if (cl->sslctx) {
 		if (rfbssl_pending(cl))
 		    continue;
@@ -678,7 +683,7 @@ rfbPeekExactTimeout(rfbClientPtr cl, char* buf, int len, int timeout)
     struct timeval tv;
 
     while (len > 0) {
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 	if (cl->sslctx)
 	    n = rfbssl_peek(cl, buf, len);
 	else
@@ -707,7 +712,7 @@ rfbPeekExactTimeout(rfbClientPtr cl, char* buf, int len, int timeout)
                 return n;
             }
 
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 	    if (cl->sslctx) {
 		if (rfbssl_pending(cl))
 		    continue;
@@ -778,7 +783,7 @@ rfbWriteExact(rfbClientPtr cl,
 
     LOCK(cl->outputMutex);
     while (len > 0) {
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
         if (cl->sslctx)
 	    n = rfbssl_write(cl, buf, len);
 	else

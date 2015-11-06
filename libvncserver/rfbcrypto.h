@@ -1,9 +1,14 @@
 #ifndef _RFB_CRYPTO_H
 #define _RFB_CRYPTO_H 1
 
-#include <sys/uio.h>
 #ifdef WIN32
-#include <io.h>
+#include <sys/types.h>
+struct iovec {
+	void* iov_base;
+	size_t iov_len;
+};
+#else
+#include <sys/uio.h>
 #endif
 
 

@@ -34,7 +34,7 @@
 /* errno */
 #include <errno.h>
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(WIN32)
 #include <resolv.h> /* __b64_ntop */
 #endif
 
@@ -173,8 +173,9 @@ static int webSocketsEncodeHixie(rfbClientPtr cl, const char *src, int len, char
 static int webSocketsDecodeHybi(rfbClientPtr cl, char *dst, int len);
 static int webSocketsDecodeHixie(rfbClientPtr cl, char *dst, int len);
 
-static int
-min (int a, int b) {
+#undef min /* be sure min is not defined */
+
+static int min (int a, int b) {
     return a < b ? a : b;
 }
 

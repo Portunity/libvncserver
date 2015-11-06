@@ -102,7 +102,7 @@
 /* strftime() */
 #include <time.h>
 
-#ifdef LIBVNCSERVER_WITH_WEBSOCKETS
+#if defined(LIBVNCSERVER_WITH_WEBSOCKETS) || defined(LIBVNCSERVER_WITH_TLS)
 #include "rfbssl.h"
 #endif
 
