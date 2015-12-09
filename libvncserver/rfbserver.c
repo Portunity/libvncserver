@@ -476,6 +476,15 @@ rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
 
       cl->lastPtrX = -1;
 
+      switch (cl->screen->newClientCreationHook(cl)) {
+        case RFB_CLIENT_REFUSE:
+	        rfbCloseClient(cl);
+	        rfbClientConnectionGone(cl);
+	        return 0;
+        default:
+		    break;	  
+      }
+	  
 #ifdef LIBVNCSERVER_WITH_WEBSOCKETS
       /*
        * Wait a few ms for the client to send one of:

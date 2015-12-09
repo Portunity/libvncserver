@@ -925,6 +925,7 @@ rfbScreenInfoPtr rfbGetScreen(int* argc,char** argv,
    screen->setXCutText = rfbDefaultSetXCutText;
    screen->getCursorPtr = rfbDefaultGetCursorPtr;
    screen->setTranslateFunction = rfbSetTranslateFunction;
+   screen->newClientCreationHook = rfbDefaultNewClientHook;
    screen->newClientHook = rfbDefaultNewClientHook;
    screen->displayHook = NULL;
    screen->displayFinishedHook = NULL;

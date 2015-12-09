@@ -339,6 +339,8 @@ typedef struct _rfbScreenInfo
     rfbFileTransferPermitted  getFileTransferPermission;
     rfbSetTextChat            setTextChat;
 
+	/** newClientHook is called just after a new client is created and before Anything is sent or extensions are applied */
+    rfbNewClientHookPtr newClientCreationHook;
     /** newClientHook is called just after a new client is created */
     rfbNewClientHookPtr newClientHook;
     /** displayHook is called just before a frame buffer update */
