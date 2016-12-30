@@ -379,13 +379,11 @@ rfbNewTCPOrUDPClient(rfbScreenInfoPtr rfbScreen,
 
       if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 		     (char *)&one, sizeof(one)) < 0) {
-	rfbLogPerror("setsockopt failed");
-	closesocket(sock);
-	return NULL;
+        rfbLogPerror("setsockopt failed: can't set TCP_NODELAY flag, non TCP socket?");
       }
 
       FD_SET(sock,&(rfbScreen->allFds));
-		rfbScreen->maxFd = max(sock,rfbScreen->maxFd);
+		rfbScreen->maxFd = rfbMax(sock,rfbScreen->maxFd);
 
       INIT_MUTEX(cl->outputMutex);
       INIT_MUTEX(cl->refCountMutex);

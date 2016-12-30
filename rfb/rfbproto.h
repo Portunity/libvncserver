@@ -81,20 +81,20 @@
 #endif
 #endif
 
-#if !defined(_WIN32)
+#if LIBVNCSERVER_HAVE_ENDIAN_H
 # include <endian.h>
 # if __BYTE_ORDER == __BIG_ENDIAN
 #  define LIBVNCSERVER_WORDS_BIGENDIAN 1
 # endif
-#endif /* !_WIN32 */
+#endif
 
 /* MS compilers don't have strncasecmp */
 #ifdef _MSC_VER
 #define strncasecmp _strnicmp
 #endif
 
+#define rfbMax(a,b) (((a)>(b))?(a):(b))
 #if !defined(WIN32) || defined(__MINGW32__)
-#define max(a,b) (((a)>(b))?(a):(b))
 #ifdef LIBVNCSERVER_HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
@@ -120,7 +120,7 @@ typedef uint32_t in_addr_t;
 #define                INADDR_NONE     ((in_addr_t) 0xffffffff)
 #endif
 
-#define MAX_ENCODINGS 21
+#define MAX_ENCODINGS 64
 
 /*****************************************************************************
  *

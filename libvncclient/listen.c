@@ -30,9 +30,6 @@
 #ifdef WIN32
 #define close closesocket
 #include <winsock2.h>
-#ifdef _MINGW32
-#undef max
-#endif // #ifdef _MINGW32
 #else // #ifdef WIN32
 #include <sys/wait.h>
 #include <sys/utsname.h>
@@ -98,7 +95,7 @@ listenForIncomingConnections(rfbClient* client) {
         if (listen6Socket >= 0)
             FD_SET(listen6Socket, &fds);
 
-        r = select(max(listenSocket, listen6Socket) + 1, &fds, NULL, NULL, NULL);
+        r = select(rfbMax(listenSocket, listen6Socket)+1, &fds, NULL, NULL, NULL);
 
         if (r > 0) {
             if (FD_ISSET(listenSocket, &fds))
@@ -187,7 +184,7 @@ listenForIncomingConnectionsNoFork(rfbClient* client, int timeout) {
 #ifdef LIBVNCSERVER_IPv6
     if (client->listen6Sock != INVALID_SOCKET) {
         FD_SET(client->listen6Sock, &fds);
-        nfds = max(nfds, client->listen6Sock + 1);
+        nfds = rfbMax(nfds, client->listen6Sock + 1);
     }
 #endif
     if (timeout < 0)

@@ -79,7 +79,8 @@ typedef int (*wsEncodeFunc)(rfbClientPtr cl, const char *src, int len, char **ds
 typedef int (*wsDecodeFunc)(rfbClientPtr cl, char *dst, int len);
 
 typedef struct ws_ctx_s {
-    char codeBuf[B64LEN(UPDATE_BUF_SIZE) + WSHLENMAX]; /* base64 + maximum frame header length */
+    char codeBufDecode[B64LEN(UPDATE_BUF_SIZE) + WSHLENMAX]; /* base64 + maximum frame header length */
+	char codeBufEncode[B64LEN(UPDATE_BUF_SIZE) + WSHLENMAX]; /* base64 + maximum frame header length */
     char readbuf[8192];
     int readbufstart;
     int readbuflen;
@@ -152,6 +153,11 @@ Sec-WebSocket-Accept: %s\r\n\
 Sec-WebSocket-Protocol: %s\r\n\
 \r\n"
 
+#define SERVER_HANDSHAKE_HYBI_NO_PROTOCOL "HTTP/1.1 101 Switching Protocols\r\n\
+Upgrade: websocket\r\n\
+Connection: Upgrade\r\n\
+Sec-WebSocket-Accept: %s\r\n\
+\r\n"
 
 #define WEBSOCKETS_CLIENT_CONNECT_WAIT_MS 100
 #define WEBSOCKETS_CLIENT_SEND_WAIT_MS 100
@@ -390,8 +396,12 @@ webSocketsHandshake(rfbClientPtr cl, char *scheme)
 	char accept[B64LEN(SHA1_HASH_SIZE) + 1];
 	rfbLog("  - WebSockets client version hybi-%02d\n", sec_ws_version);
 	webSocketsGenSha1Key(accept, sizeof(accept), sec_ws_key);
+        if(strlen(protocol) > 0)
 	len = snprintf(response, WEBSOCKETS_MAX_HANDSHAKE_LEN,
 		 SERVER_HANDSHAKE_HYBI, accept, protocol);
+        else
+            len = snprintf(response, WEBSOCKETS_MAX_HANDSHAKE_LEN,
+                           SERVER_HANDSHAKE_HYBI_NO_PROTOCOL, accept);
     } else {
 	/* older hixie handshake, this could be removed if
 	 * a final standard is established */
@@ -491,15 +501,15 @@ webSocketsEncodeHixie(rfbClientPtr cl, const char *src, int len, char **dst)
     int sz = 0;
     ws_ctx_t *wsctx = (ws_ctx_t *)cl->wsctx;
 
-    wsctx->codeBuf[sz++] = '\x00';
-    len = __b64_ntop((unsigned char *)src, len, wsctx->codeBuf+sz, sizeof(wsctx->codeBuf) - (sz + 1));
+    wsctx->codeBufEncode[sz++] = '\x00';
+    len = __b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode+sz, sizeof(wsctx->codeBufEncode) - (sz + 1));
     if (len < 0) {
         return len;
     }
     sz += len;
 
-    wsctx->codeBuf[sz++] = '\xff';
-    *dst = wsctx->codeBuf;
+    wsctx->codeBufEncode[sz++] = '\xff';
+    *dst = wsctx->codeBufEncode;
     return sz;
 }
 
@@ -537,7 +547,7 @@ webSocketsDecodeHixie(rfbClientPtr cl, char *dst, int len)
     char *buf, *end = NULL;
     ws_ctx_t *wsctx = (ws_ctx_t *)cl->wsctx;
 
-    buf = wsctx->codeBuf;
+    buf = wsctx->codeBufDecode;
 
     n = ws_peek(cl, buf, len*2+2);
 
@@ -658,8 +668,8 @@ webSocketsDecodeHybi(rfbClientPtr cl, char *dst, int len)
       goto spor;
     }
 
-    buf = wsctx->codeBuf;
-    header = (ws_header_t *)wsctx->codeBuf;
+    buf = wsctx->codeBufDecode;
+    header = (ws_header_t *)wsctx->codeBufDecode;
 
     ret = ws_peek(cl, buf, B64LEN(len) + WSHLENMAX);
 
@@ -743,11 +753,11 @@ webSocketsDecodeHybi(rfbClientPtr cl, char *dst, int len)
 	errno = ECONNRESET;
 	break;
       case WS_OPCODE_TEXT_FRAME:
-	if (-1 == (flength = __b64_pton(payload, (unsigned char *)wsctx->codeBuf, sizeof(wsctx->codeBuf)))) {
+	if (-1 == (flength = __b64_pton(payload, (unsigned char *)wsctx->codeBufDecode, sizeof(wsctx->codeBufDecode)))) {
 	  rfbErr("%s: Base64 decode error; %m\n", __func__);
 	  break;
 	}
-	payload = wsctx->codeBuf;
+	payload = wsctx->codeBufDecode;
 	/* fall through */
       case WS_OPCODE_BINARY_FRAME:
 	if (flength > len) {
@@ -791,7 +801,7 @@ webSocketsEncodeHybi(rfbClientPtr cl, const char *src, int len, char **dst)
 	  return 0;
     }
 
-    header = (ws_header_t *)wsctx->codeBuf;
+    header = (ws_header_t *)wsctx->codeBufEncode;
 
     if (wsctx->base64) {
 	opcode = WS_OPCODE_TEXT_FRAME;
@@ -817,7 +827,7 @@ webSocketsEncodeHybi(rfbClientPtr cl, const char *src, int len, char **dst)
     }
 
     if (wsctx->base64) {
-        if (-1 == (ret = __b64_ntop((unsigned char *)src, len, wsctx->codeBuf + sz, sizeof(wsctx->codeBuf) - sz))) {
+        if (-1 == (ret = __b64_ntop((unsigned char *)src, len, wsctx->codeBufEncode + sz, sizeof(wsctx->codeBufEncode) - sz))) {
 	  rfbErr("%s: Base 64 encode failed\n", __func__);
 	} else {
 	  if (ret != blen)
@@ -825,11 +835,12 @@ webSocketsEncodeHybi(rfbClientPtr cl, const char *src, int len, char **dst)
 	  ret += sz;
 	}
     } else {
-      memcpy(wsctx->codeBuf + sz, src, len);
+      memcpy(wsctx->codeBufEncode + sz, src, len);
       ret =  sz + len;
     }
 
-    *dst = wsctx->codeBuf;
+    *dst = wsctx->codeBufEncode;
+
     return ret;
 }
 

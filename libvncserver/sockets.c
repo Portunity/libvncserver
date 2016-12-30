@@ -77,6 +77,10 @@
 #include "rfbssl.h"
 #endif
 
+#ifdef LIBVNCSERVER_WITH_SYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 #if defined(__linux__) && defined(NEED_TIMEVAL)
 struct timeval 
 {
@@ -123,6 +127,54 @@ int deny_severity=LOG_WARNING;
 int rfbMaxClientWait = 20000;   /* time (ms) after which we decide client has
                                    gone away - needed to stop us hanging */
 
+static rfbBool
+rfbNewConnectionFromSock(rfbScreenInfoPtr rfbScreen, int sock)
+{
+    const int one = 1;
+#ifdef LIBVNCSERVER_IPv6
+    struct sockaddr_storage addr;
+#else
+    struct sockaddr_in addr;
+#endif
+    socklen_t addrlen = sizeof(addr);
+
+    getpeername(sock, (struct sockaddr *)&addr, &addrlen);
+
+    if(!rfbSetNonBlocking(sock)) {
+      rfbLogPerror("rfbCheckFds: setnonblock");
+      closesocket(sock);
+      return FALSE;
+    }
+
+    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+		   (char *)&one, sizeof(one)) < 0) {
+      rfbLogPerror("rfbCheckFds: setsockopt failed: can't set TCP_NODELAY flag, non TCP socket?");
+    }
+
+#ifdef USE_LIBWRAP
+    if(!hosts_ctl("vnc",STRING_UNKNOWN,inet_ntoa(addr.sin_addr),
+		  STRING_UNKNOWN)) {
+      rfbLog("Rejected connection from client %s\n",
+	     inet_ntoa(addr.sin_addr));
+      closesocket(sock);
+      return FALSE;
+    }
+#endif
+
+#ifdef LIBVNCSERVER_IPv6
+    char host[1024];
+    if(getnameinfo((struct sockaddr*)&addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST) != 0) {
+      rfbLogPerror("rfbProcessNewConnection: error in getnameinfo");
+    }
+    rfbLog("Got connection from client %s\n", host);
+#else
+    rfbLog("Got connection from client %s\n", inet_ntoa(addr.sin_addr));
+#endif
+
+    rfbNewClient(rfbScreen,sock);
+    return TRUE;
+}
+
 /*
  * rfbInitSockets sets up the TCP and UDP sockets to listen for RFB
  * connections.  It does nothing if called again.
@@ -139,7 +191,22 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
 
     rfbScreen->socketState = RFB_SOCKET_READY;
 
+#ifdef LIBVNCSERVER_WITH_SYSTEMD
+    if (sd_listen_fds(0) == 1)
+    {
+        int sock = SD_LISTEN_FDS_START + 0;
+        if (sd_is_socket(sock, AF_UNSPEC, 0, 0))
+            rfbNewConnectionFromSock(rfbScreen, sock);
+        else if (sd_is_socket(sock, AF_UNSPEC, 0, 1))
+            rfbProcessNewConnection(rfbScreen);
+        return;
+    }
+    else
+        rfbLog("Unable to establish connection with systemd socket\n");
+#endif
+
     if (rfbScreen->inetdSock != INVALID_SOCKET) {
+
 	const int one = 1;
 
         if(!rfbSetNonBlocking(rfbScreen->inetdSock))
@@ -147,8 +214,7 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
 
 	if (setsockopt(rfbScreen->inetdSock, IPPROTO_TCP, TCP_NODELAY,
 		       (char *)&one, sizeof(one)) < 0) {
-	    rfbLogPerror("setsockopt");
-	    return;
+	    rfbLogPerror("setsockopt failed: can't set TCP_NODELAY flag, non TCP socket?");
 	}
 
     	FD_ZERO(&(rfbScreen->allFds));
@@ -157,10 +223,10 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
 	return;
     }
 
-    if(rfbScreen->autoPort) {
-        int i;
         FD_ZERO(&(rfbScreen->allFds));
 
+    if(rfbScreen->autoPort && rfbScreen->port>0) {
+        int i;
         rfbLog("Autoprobing TCP port \n");
         for (i = 5900; i < 6000; i++) {
             if ((rfbScreen->listenSock = rfbListenOnTCPPort(i, iface)) != INVALID_SOCKET) {
@@ -177,8 +243,11 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
         rfbLog("Autoprobing selected TCP port %d\n", rfbScreen->port);
         FD_SET(rfbScreen->listenSock, &(rfbScreen->allFds));
         rfbScreen->maxFd = rfbScreen->listenSock;
+    }
 
 #ifdef LIBVNCSERVER_IPv6
+    if(rfbScreen->autoPort && rfbScreen->ipv6port>0) {
+        int i;
         rfbLog("Autoprobing TCP6 port \n");
 	for (i = 5900; i < 6000; i++) {
             if ((rfbScreen->listen6Sock = rfbListenOnTCP6Port(i, rfbScreen->listen6Interface)) != INVALID_SOCKET) {
@@ -194,13 +263,12 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
 
         rfbLog("Autoprobing selected TCP6 port %d\n", rfbScreen->ipv6port);
 	FD_SET(rfbScreen->listen6Sock, &(rfbScreen->allFds));
-	rfbScreen->maxFd = max((int)rfbScreen->listen6Sock,rfbScreen->maxFd);
-#endif
+	rfbScreen->maxFd = rfbMax((int)rfbScreen->listen6Sock,rfbScreen->maxFd);
     }
-    else
-    {
+#endif
+
+    if(!rfbScreen->autoPort) {
 	    if(rfbScreen->port>0) {
-      FD_ZERO(&(rfbScreen->allFds));
 
       if ((rfbScreen->listenSock = rfbListenOnTCPPort(rfbScreen->port, iface)) == INVALID_SOCKET) {
 	rfbLogPerror("ListenOnTCPPort");
@@ -221,7 +289,7 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
       rfbLog("Listening for VNC connections on TCP6 port %d\n", rfbScreen->ipv6port);  
 	
       FD_SET(rfbScreen->listen6Sock, &(rfbScreen->allFds));
-      rfbScreen->maxFd = max((int)rfbScreen->listen6Sock,rfbScreen->maxFd);
+      rfbScreen->maxFd = rfbMax((int)rfbScreen->listen6Sock,rfbScreen->maxFd);
 	    }
 #endif
 
@@ -237,7 +305,7 @@ rfbInitSockets(rfbScreenInfoPtr rfbScreen)
 	rfbLog("Listening for VNC connections on TCP port %d\n", rfbScreen->port);  
 
 	FD_SET(rfbScreen->udpSock, &(rfbScreen->allFds));
-	rfbScreen->maxFd = max((int)rfbScreen->udpSock,rfbScreen->maxFd);
+	rfbScreen->maxFd = rfbMax((int)rfbScreen->udpSock,rfbScreen->maxFd);
     }
 }
 
@@ -396,7 +464,7 @@ rfbCheckFds(rfbScreenInfoPtr rfbScreen,long usec)
 #ifdef LIBVNCSERVER_WITH_WEBSOCKETS
                     do {
                         rfbProcessClientMessage(cl);
-                    } while (webSocketsHasDataInBuffer(cl));
+                    } while (cl->sock > 0 && webSocketsHasDataInBuffer(cl));
 #else
                     rfbProcessClientMessage(cl);
 #endif
@@ -413,14 +481,8 @@ rfbCheckFds(rfbScreenInfoPtr rfbScreen,long usec)
 rfbBool
 rfbProcessNewConnection(rfbScreenInfoPtr rfbScreen)
 {
-    const int one = 1;
     SOCKET sock = INVALID_SOCKET;
-#ifdef LIBVNCSERVER_IPv6
-    struct sockaddr_storage addr;
-#else
-    struct sockaddr_in addr;
-#endif
-    socklen_t addrlen = sizeof(addr);
+
     fd_set listen_fds; 
     SOCKET chosen_listen_sock = INVALID_SOCKET;
 
@@ -443,49 +505,12 @@ rfbProcessNewConnection(rfbScreenInfoPtr rfbScreen)
     if (rfbScreen->listen6Sock != INVALID_SOCKET && FD_ISSET(rfbScreen->listen6Sock, &listen_fds))
       chosen_listen_sock = rfbScreen->listen6Sock;
 
-    if ((sock = accept(chosen_listen_sock,
-		       (struct sockaddr *)&addr, &addrlen)) == INVALID_SOCKET) {
+    if ((sock = accept(chosen_listen_sock, NULL, NULL)) == INVALID_SOCKET) {
       rfbLogPerror("rfbCheckFds: accept");
       return FALSE;
     }
 
-    if(!rfbSetNonBlocking(sock)) {
-      closesocket(sock);
-      return FALSE;
-    }
-
-    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-		   (char *)&one, sizeof(one)) < 0) {
-      rfbLogPerror("rfbCheckFds: setsockopt");
-      closesocket(sock);
-      return FALSE;
-    }
-
-#ifdef USE_LIBWRAP
-    if(!hosts_ctl("vnc",STRING_UNKNOWN,inet_ntoa(addr.sin_addr),
-		  STRING_UNKNOWN)) {
-      rfbLog("Rejected connection from client %s\n",
-	     inet_ntoa(addr.sin_addr));
-      closesocket(sock);
-      return FALSE;
-    }
-#endif
-
-#ifdef LIBVNCSERVER_IPv6
-    {
-        char host[1024];
-        if(getnameinfo((struct sockaddr*)&addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST) != 0) {
-            rfbLogPerror("rfbProcessNewConnection: error in getnameinfo");
-        }
-        rfbLog("Got connection from client %s\n", host);
-    }
-#else
-    rfbLog("Got connection from client %s\n", inet_ntoa(addr.sin_addr));
-#endif
-
-    rfbNewClient(rfbScreen,sock);
-
-    return TRUE;
+    return rfbNewConnectionFromSock(rfbScreen, sock);
 }
 
 
@@ -494,8 +519,6 @@ rfbDisconnectUDPSock(rfbScreenInfoPtr rfbScreen)
 {
   rfbScreen->udpSockConnected = FALSE;
 }
-
-
 
 void
 rfbCloseClient(rfbClientPtr cl)
@@ -561,14 +584,12 @@ rfbConnect(rfbScreenInfoPtr rfbScreen,
 
     if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 		   (char *)&one, sizeof(one)) < 0) {
-	rfbLogPerror("setsockopt failed");
-	closesocket(sock);
-	return INVALID_SOCKET;
+        rfbLogPerror("setsockopt failed: can't set TCP_NODELAY flag, non TCP socket?");
     }
 
     /* AddEnabledDevice(sock); */
     FD_SET(sock, &rfbScreen->allFds);
-    rfbScreen->maxFd = max(sock,rfbScreen->maxFd);
+    rfbScreen->maxFd = rfbMax(sock,rfbScreen->maxFd);
 
     return sock;
 }

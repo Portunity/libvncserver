@@ -582,7 +582,7 @@ listenerRun(void *data)
     socklen_t len;
     fd_set listen_fds;  /* temp file descriptor list for select() */
 
-    /* TODO: this thread wont die by restarting the server */
+    /* TODO: this thread won't die by restarting the server */
     /* TODO: HTTP is not handled */
     while (1) {
         client_fd = -1;
@@ -612,21 +612,18 @@ listenerRun(void *data)
     return(NULL);
 }
 
-void 
-rfbStartOnHoldClient(rfbClientPtr cl)
-{
-    pthread_create(&cl->client_thread, NULL, clientInput, (void *)cl);
-}
-
-#else
+#endif
 
 void 
 rfbStartOnHoldClient(rfbClientPtr cl)
 {
 	cl->onHold = FALSE;
+#ifdef LIBVNCSERVER_HAVE_LIBPTHREAD
+    if(cl->screen->backgroundLoop)
+	pthread_create(&cl->client_thread, NULL, clientInput, (void *)cl);
+#endif
 }
 
-#endif
 
 void 
 rfbRefuseOnHoldClient(rfbClientPtr cl)

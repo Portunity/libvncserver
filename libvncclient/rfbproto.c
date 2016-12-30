@@ -147,11 +147,20 @@ void* rfbClientGetClientData(rfbClient* client, void* tag)
 
 /* messages */
 
+static rfbBool CheckRect(rfbClient* client, int x, int y, int w, int h) {
+  return x + w <= client->width && y + h <= client->height;
+}
+
 static void FillRectangle(rfbClient* client, int x, int y, int w, int h, uint32_t colour) {
   int i,j;
 
   if (client->frameBuffer == NULL) {
       return;
+  }
+
+  if (!CheckRect(client, x, y, w, h)) {
+    rfbClientLog("Rect out of bounds: %dx%d at (%d, %d)\n", x, y, w, h);
+    return;
   }
 
 #define FILL_RECT(BPP) \
@@ -173,6 +182,11 @@ static void CopyRectangle(rfbClient* client, uint8_t* buffer, int x, int y, int 
 
   if (client->frameBuffer == NULL) {
       return;
+  }
+
+  if (!CheckRect(client, x, y, w, h)) {
+    rfbClientLog("Rect out of bounds: %dx%d at (%d, %d)\n", x, y, w, h);
+    return;
   }
 
 #define COPY_RECT(BPP) \
@@ -199,6 +213,16 @@ static void CopyRectangleFromRectangle(rfbClient* client, int src_x, int src_y, 
 
   if (client->frameBuffer == NULL) {
       return;
+  }
+
+  if (!CheckRect(client, src_x, src_y, w, h)) {
+    rfbClientLog("Source rect out of bounds: %dx%d at (%d, %d)\n", src_x, src_y, w, h);
+    return;
+  }
+
+  if (!CheckRect(client, dest_x, dest_y, w, h)) {
+    rfbClientLog("Dest rect out of bounds: %dx%d at (%d, %d)\n", dest_x, dest_y, w, h);
+    return;
   }
 
 #define COPY_RECT_FROM_RECT(BPP) \
@@ -1492,7 +1516,8 @@ SetFormatAndEncodings(rfbClient* client)
     if(e->encodings) {
       int* enc;
       for(enc = e->encodings; *enc; enc++)
-	encs[se->nEncodings++] = rfbClientSwap32IfLE(*enc);
+        if(se->nEncodings < MAX_ENCODINGS)
+          encs[se->nEncodings++] = rfbClientSwap32IfLE(*enc);
     }
 
   len = sz_rfbSetEncodingsMsg + se->nEncodings * 4;
@@ -1962,7 +1987,8 @@ HandleRFBServerMessage(rfbClient* client)
 	  y += linesToRead;
 
 	}
-      } break;
+	break;
+      } 
 
       case rfbEncodingCopyRect:
       {

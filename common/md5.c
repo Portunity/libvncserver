@@ -27,16 +27,10 @@
 # include <string.h>
 
 #include "md5.h"
+#include "rfb/rfbconfig.h"
 
-#ifdef _MSC_VER
-#define __BIG_ENDIAN 4321
-#define __LITTLE_ENDIAN 1234
-#define __BYTE_ORDER __LITTLE_ENDIAN
-#else
-#include <endian.h>
-#endif
-#if __BYTE_ORDER == __BIG_ENDIAN
-#define WORDS_BIGENDIAN 1
+#ifdef LIBVNCSERVER_WORDS_BIGENDIAN
+#  define WORDS_BIGENDIAN 1
 #endif
 
 /* We need to keep the namespace clean so define the MD5 function
@@ -52,7 +46,7 @@
 
 #ifdef WORDS_BIGENDIAN
 # define SWAP(n)                                                        \
-    (((n) << 24) | (((n) & 0xff00) << 8) | (((n) >> 8) & 0xff00) | ((n) >> 24))
+    ((((n) & 0x00ff) << 24) | (((n) & 0xff00) << 8) | (((n) >> 8) & 0xff00) | (((n) >> 24) & 0x00ff))
 #else
 # define SWAP(n) (n)
 #endif
